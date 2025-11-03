@@ -1,15 +1,16 @@
 //Importamos las librarías requeridas
+const cors = require('cors');
 const express = require('express')
 const bodyParser = require('body-parser')
 const sqlite3 = require('sqlite3').verbose();
 
 //Documentación en https://expressjs.com/en/starter/hello-world.html
 const app = express()
+app.use(cors());
 
 //Creamos un parser de tipo application/json
 //Documentación en https://expressjs.com/en/resources/middleware/body-parser.html
 const jsonParser = bodyParser.json()
-
 
 // Abre la base de datos de SQLite
 let db = new sqlite3.Database('./base.sqlite3', (err) => {
@@ -31,61 +32,78 @@ let db = new sqlite3.Database('./base.sqlite3', (err) => {
     });
 });
 
-//Creamos un endpoint de login que recibe los datos como json
-app.post('/insert', jsonParser, function (req, res) {
+
+app.post('/agrega_todo', jsonParser, function (req, res) {
     //Imprimimos el contenido del campo todo
     const { todo } = req.body;
-   
-    console.log(todo);
-    res.setHeader('Content-Type', 'application/json');
     
+    console.log(todo);
 
     if (!todo) {
         res.status(400).send('Falta información necesaria');
         return;
     }
-    const stmt  =  db.prepare('INSERT INTO todos (todo, created_at) VALUES (?, CURRENT_TIMESTAMP)');
+
+    const stmt  =  db.prepare('INSERT INTO todos (todo, created_at) VALUES (?, unixepoch())');
 
     stmt.run(todo, (err) => {
         if (err) {
-          console.error("Error running stmt:", err);
-          res.status(500).send(err);
-          return;
-
+            console.error("Error running stmt:", err);
+            res.status(500).send(err);
+            return;
         } else {
-          console.log("Insert was successful!");
+            console.log("Insert was successful!");
         }
     });
 
     stmt.finalize();
     
-    //Enviamos de regreso la respuesta
-    res.setHeader('Content-Type', 'application/json');
-    res.status(201).send();
+    //Regreso de respuesta
+    res.status(201).json({ message: 'Tarea agregada' });
 })
 
+// Endpoint para obtener todas las tareas
+app.get('/obtiene_todos', function (req, res) {
+    
+    console.log("Se recibió una petición GET para /obtiene_todos");
 
+    // Consulta SQL para seleccionar todo
+    const consulta = "SELECT * FROM todos";
+    
+    db.all(consulta, [], (err, resultados) => {
+        
+        if (err) {
+            console.error("Hubo un error con la base de datos:", err.message);
+            res.status(500).json({ "error": err.message });
+        } else {
+            console.log("Enviando la lista de tareas:", resultados);
+            res.status(200).json({
+                "tareas": resultados
+            });
+        }
+    });
+});
 
 app.get('/', function (req, res) {
-    //Enviamos de regreso la respuesta
+    //Regreso de respuesta
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ 'status': 'ok2' }));
 })
-
 
 //Creamos un endpoint de login que recibe los datos como json
 app.post('/login', jsonParser, function (req, res) {
     //Imprimimos el contenido del body
     console.log(req.body);
 
-    //Enviamos de regreso la respuesta
+    //Regreso de respuesta
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({ 'status': 'ok' }));
 })
 
-//Corremos el servidor en el puerto 3000
-const port = 3000;
+//Corremos el server
+const port = process.env.PORT || 3000; 
+const host = '0.0.0.0';
 
-app.listen(port, () => {
-    console.log(`Aplicación corriendo en http://localhost:${port}`)
+app.listen(port, host, () => {
+    console.log(`Aplicación corriendo en http://${host}:${port}`)
 })
