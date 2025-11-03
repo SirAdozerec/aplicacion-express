@@ -107,5 +107,3 @@ const host = '0.0.0.0';
 app.listen(port, host, () => {
     console.log(`Aplicación corriendo en http://${host}:${port}`)
 })
-
-base.sqlite3
